@@ -1,0 +1,18 @@
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = "../build"
+subprojects {
+    // Only set build directory for the app module, not Flutter plugins
+    if (project.name == "app") {
+        project.buildDir = "${rootProject.buildDir}/${project.name}"
+    }
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}

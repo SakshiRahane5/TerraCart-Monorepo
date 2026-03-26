@@ -1,0 +1,233 @@
+@import "tailwindcss";
+
+/* Global Font - Space Grotesk */
+* {
+  font-family:
+    "Space Grotesk",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Roboto",
+    "Oxygen",
+    "Ubuntu",
+    "Cantarell",
+    "Fira Sans",
+    "Droid Sans",
+    "Helvetica Neue",
+    sans-serif;
+}
+
+body {
+  font-family:
+    "Space Grotesk",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Roboto",
+    "Oxygen",
+    "Ubuntu",
+    "Cantarell",
+    "Fira Sans",
+    "Droid Sans",
+    "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family:
+    "Space Grotesk", source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
+}
+
+/* Alert animations */
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+.animate-slide-out {
+  animation: slide-out 0.3s ease-in;
+}
+
+/* Form Input States - Matching Website UI */
+.input-error {
+  @apply border-[#ef4444] focus:ring-2 focus:ring-[#ef4444] focus:border-[#ef4444];
+}
+
+.input-warning {
+  @apply border-[#d86d2a] focus:ring-2 focus:ring-[#d86d2a] focus:border-[#d86d2a];
+}
+
+.input-success {
+  @apply border-[#10b981] focus:ring-2 focus:ring-[#10b981] focus:border-[#10b981];
+}
+
+.input-default {
+  @apply border-[#e2c1ac] focus:ring-2 focus:ring-[#d86d2a] focus:border-[#d86d2a];
+}
+
+/* Form Message Styles */
+.form-error {
+  @apply text-sm text-[#991b1b] mt-1 flex items-center gap-1;
+}
+
+.form-warning {
+  @apply text-sm text-[#92400e] mt-1 flex items-center gap-1;
+}
+
+.form-success {
+  @apply text-sm text-[#065f46] mt-1 flex items-center gap-1;
+}
+
+/* Input Base Styles */
+.input-base {
+  @apply w-full px-4 py-2 text-[#4a2e1f] bg-[#fef4ec] border rounded-lg transition-colors focus:outline-none;
+}
+
+.input-base:disabled {
+  @apply bg-[#f5e3d5] cursor-not-allowed opacity-60;
+}
+
+/* Custom Scrollbar Styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(107, 68, 35, 0.5);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(107, 68, 35, 0.8);
+}
+
+.scrollbar-thumb-\[#6b4423\]::-webkit-scrollbar-thumb {
+  background-color: #6b4423;
+}
+
+.scrollbar-track-\[#3d2418\]::-webkit-scrollbar-track {
+  background-color: #3d2418;
+}
+
+/* Smooth transitions */
+* {
+  transition-property:
+    color, background-color, border-color, text-decoration-color, fill, stroke,
+    opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Cart Admin tablet profile (OnePlus Pad Lite / 16:10 landscape) */
+@media (min-width: 1024px) and (max-width: 1400px) and (min-aspect-ratio: 8/5) and (max-aspect-ratio: 17/10) {
+  .cart-admin-shell[data-user-role="admin"] .tc-app-body {
+    margin-left: 0 !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-main-content {
+    padding: 0.875rem 1rem !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-navbar {
+    height: 3.5rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-navbar-time {
+    font-size: 1.35rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-navbar-date {
+    font-size: 0.75rem !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-menu-toggle {
+    display: inline-flex !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-user-name {
+    display: none !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-user-avatar {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    font-size: 0.95rem !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-tablet-tabs {
+    display: block !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-sidebar {
+    width: 14rem !important;
+    transform: translateX(-100%) !important;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-sidebar[data-open="true"] {
+    transform: translateX(0) !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-sidebar-profile {
+    padding: 0.75rem !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-sidebar-nav {
+    padding: 0.5rem !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-sidebar-footer {
+    padding: 0.75rem !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-sidebar-item {
+    padding-top: 0.6rem !important;
+    padding-bottom: 0.6rem !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] .tc-sidebar-label {
+    font-size: 0.82rem !important;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] main table {
+    font-size: 0.82rem;
+  }
+
+  .cart-admin-shell[data-user-role="admin"] main table th,
+  .cart-admin-shell[data-user-role="admin"] main table td {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+}

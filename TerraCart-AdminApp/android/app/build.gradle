@@ -1,0 +1,86 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+    id "com.google.gms.google-services"
+}
+
+android {
+    namespace = "com.example.terra_admin_app"
+    compileSdk = 36
+    ndkVersion = "27.0.12077973"
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId = "com.example.terra_admin_app"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // minSdk 24 is required by flutter_tts.
+        minSdk = 24
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    buildTypes {
+        release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig = signingConfigs.debug
+        }
+    }
+
+    // Configure APK output name
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "TerraCart.apk"
+        }
+    }
+}
+
+// Flutter also writes a copy to build/app/outputs/flutter-apk/app-release.apk.
+// Rename that file after release builds so the final artifact is TerraCart.apk.
+tasks.register("renameFlutterReleaseApk") {
+    doLast {
+        def flutterApkDir = file("$rootDir/../build/app/outputs/flutter-apk")
+        def defaultReleaseApk = file("$flutterApkDir/app-release.apk")
+        def targetReleaseApk = file("$flutterApkDir/TerraCart.apk")
+
+        if (!defaultReleaseApk.exists()) {
+            return
+        }
+
+        if (targetReleaseApk.exists()) {
+            targetReleaseApk.delete()
+        }
+
+        copy {
+            from defaultReleaseApk
+            into flutterApkDir
+            rename { "TerraCart.apk" }
+        }
+    }
+}
+
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    finalizedBy("renameFlutterReleaseApk")
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.5"
+}

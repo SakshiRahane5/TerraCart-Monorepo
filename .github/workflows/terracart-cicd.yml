@@ -1,0 +1,22 @@
+name: TerraCart CI/CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t terracart-backend ./TerraCart-BackendMain
+
+      - name: Build frontend image
+        run: docker build -t terracart-frontend ./TerraCart-Frontend
+
+      - name: Build admin image
+        run: docker build -t terracart-admin ./TerraCart-FrontendAdmin

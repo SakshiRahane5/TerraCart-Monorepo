@@ -1,0 +1,275 @@
+const sanitizeAddonName = (value) => {
+  const normalized = String(value || "")
+    .replace(/^\(\s*\+\s*\)\s*/u, "")
+    .trim();
+  return normalized || "Add-on";
+};
+
+const normalizeAddonQuantity = (value) => {
+  const qtyValue = Number(value);
+  return Number.isFinite(qtyValue) && qtyValue > 0
+    ? Math.floor(qtyValue)
+    : 1;
+};
+
+export function buildOrderPayload(cart, options = {}) {
+  const {
+    serviceType = "DINE_IN",
+    orderType, // PICKUP or DELIVERY
+    tableId,
+    tableNumber,
+    menuCatalog = {},
+    sessionToken,
+    customerName,
+    customerMobile,
+    customerEmail,
+    cartId,
+    customerLocation, // { latitude, longitude, address }
+    specialInstructions, // Special notes from customer
+    selectedAddons = [], // Array of { name, price, addonId }
+    anonymousSessionId,
+    sourceQrContext,
+    sourceQrType,
+    officeName,
+    officeDeliveryCharge,
+    officePaymentMode,
+    paymentRequiredBeforeProceeding,
+  } = options;
+  const items = Object.entries(cart)
+    .filter(([name, quantity]) => {
+      // Filter out items with invalid quantity
+      const qty = Number(quantity);
+      return name && name.trim() !== "" && Number.isFinite(qty) && qty > 0;
+    })
+    .map(([name, quantity]) => {
+      // Try exact match first, then case-insensitive with careful trimming
+      const safeName = (name || "").toString().trim().toLowerCase();
+      const meta = menuCatalog[name] || 
+                   Object.values(menuCatalog).find(item => {
+                      if (!item?.name) return false;
+                      const itemName = item.name.toString().trim().toLowerCase();
+                      return itemName === safeName;
+                   });
+      
+      // DEBUG LOG
+      if (!meta) {
+        console.warn(`[OrderUtils] Item not found in catalog: "${name}" (safe: "${safeName}")`, { 
+          catalogKeys: Object.keys(menuCatalog).slice(0, 10), 
+          catalogSize: Object.keys(menuCatalog).length 
+        });
+      } else if (!meta.price) {
+        console.warn(`[OrderUtils] Item found but has NO price: "${name}"`, meta);
+      } else {
+        console.log(`[OrderUtils] Item found: "${name}", Price: ${meta.price}`);
+      }
+
+      const price = meta?.price ?? 0;
+      const qty = Number(quantity);
+
+      // Validate item data
+      if (!name || typeof name !== "string" || name.trim() === "") {
+        console.warn(`[orderUtils] Invalid item name: ${name}`);
+        return null;
+      }
+      if (!Number.isFinite(qty) || qty <= 0) {
+        console.warn(`[orderUtils] Invalid quantity for ${name}: ${quantity}`);
+        return null;
+      }
+      if (!Number.isFinite(price) || price < 0) {
+        console.warn(`[orderUtils] Invalid price for ${name}: ${price}`);
+        return null;
+      }
+
+      const itemPayload = {
+        name: name.trim(),
+        quantity: qty,
+        price: Number(price), // Backend handles conversion to Paise
+      };
+      if (meta?._id) {
+        itemPayload.itemId = meta._id;
+      }
+      return itemPayload;
+    })
+    .filter((item) => item !== null); // Remove any null items from validation failures
+
+  // CRITICAL: Ensure we have at least one valid item
+  if (items.length === 0) {
+    console.error("[orderUtils] No valid items in cart after validation");
+    throw new Error("Cart is empty or contains only invalid items");
+  }
+
+  // Calculate Add-ons total
+  let addonsTotal = 0;
+  let validAddons = [];
+  
+  if (Array.isArray(selectedAddons) && selectedAddons.length > 0) {
+      const addonMap = new Map();
+
+      selectedAddons.forEach((addon) => {
+        if (!addon || typeof addon !== "object") return;
+
+        const addonId = addon.addonId || addon._id || addon.id;
+        const addonName = sanitizeAddonName(addon.name);
+        const priceValue = Number(addon.price);
+        const addonPrice =
+          Number.isFinite(priceValue) && priceValue >= 0 ? priceValue : 0;
+        const addonQuantity = normalizeAddonQuantity(addon.quantity);
+        const dedupeKey = addonId
+          ? `id:${addonId}`
+          : `name:${addonName.toLowerCase()}:${addonPrice}`;
+
+        if (!addonMap.has(dedupeKey)) {
+          addonMap.set(dedupeKey, {
+            ...(addonId ? { addonId } : {}),
+            name: addonName,
+            price: addonPrice,
+            quantity: 0,
+          });
+        }
+
+        addonMap.get(dedupeKey).quantity += addonQuantity;
+      });
+
+      validAddons = Array.from(addonMap.values()).filter(
+        (addon) => addon.name && addon.quantity > 0,
+      );
+      addonsTotal = validAddons.reduce(
+        (sum, addon) => sum + addon.price * addon.quantity,
+        0,
+      );
+  }
+
+  const subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0);
+  const gst = 0; // No GST applied
+  const totalAmount = subtotal + addonsTotal; // Total includes addons
+
+  const payload = {
+    serviceType,
+    items,
+    selectedAddons: validAddons,
+    subtotal,
+    gst,
+    totalAmount,
+  };
+
+  if (paymentRequiredBeforeProceeding === true) {
+    payload.paymentRequiredBeforeProceeding = true;
+  }
+
+  const normalizedAnonymousSessionId = String(
+    anonymousSessionId || ""
+  ).trim();
+  if (normalizedAnonymousSessionId) {
+    payload.anonymousSessionId = normalizedAnonymousSessionId;
+  }
+
+  const normalizedSourceQrContext = String(sourceQrContext || "").trim();
+  if (normalizedSourceQrContext) {
+    payload.sourceQrContext = normalizedSourceQrContext;
+  }
+
+  // Include special instructions for all service types
+  if (specialInstructions && specialInstructions.trim()) {
+    payload.specialInstructions = specialInstructions.trim();
+  }
+
+  // For TAKEAWAY/PICKUP/DELIVERY orders, don't include tableId, tableNumber
+  if (serviceType === "DINE_IN") {
+    if (tableId) payload.tableId = tableId;
+    if (tableNumber !== undefined && tableNumber !== null) {
+      payload.tableNumber = String(tableNumber);
+    }
+    // CRITICAL: Validate sessionToken before including it
+    // Ensure it's a valid non-empty string
+    if (sessionToken && typeof sessionToken === "string" && sessionToken.trim().length > 0) {
+      payload.sessionToken = sessionToken.trim();
+    } else if (serviceType === "DINE_IN") {
+      // Log warning if sessionToken is missing or invalid for DINE_IN
+      console.warn("[orderUtils] DINE_IN order missing or invalid sessionToken:", {
+        sessionToken,
+        sessionTokenType: typeof sessionToken,
+        sessionTokenLength: sessionToken ? sessionToken.length : 0,
+      });
+    }
+    // CRITICAL: Never include customer info for DINE_IN orders
+    // This prevents "customer name required" errors for dine-in orders
+    // Customer info is only needed for PICKUP/DELIVERY orders
+    if (payload.customerName) delete payload.customerName;
+    if (payload.customerMobile) delete payload.customerMobile;
+    if (payload.customerEmail) delete payload.customerEmail;
+    if (payload.customerLocation) delete payload.customerLocation;
+    if (payload.cartId) delete payload.cartId; // DINE_IN orders get cartId from table, not from request
+  } else if (
+    serviceType === "TAKEAWAY" ||
+    serviceType === "PICKUP" ||
+    serviceType === "DELIVERY"
+  ) {
+    // Keep table reference when available so backend can infer QR context safely.
+    if (tableId) payload.tableId = tableId;
+    if (tableNumber !== undefined && tableNumber !== null) {
+      payload.tableNumber = String(tableNumber);
+    }
+
+    // PICKUP/DELIVERY orders don't need table information
+    // Set serviceType and orderType.
+    // Fallback: if orderType is missing but serviceType is PICKUP/DELIVERY, preserve subtype from serviceType.
+    const normalizedOrderType =
+      orderType === "PICKUP" || orderType === "DELIVERY"
+        ? orderType
+        : serviceType === "PICKUP" || serviceType === "DELIVERY"
+          ? serviceType
+          : null;
+
+    if (normalizedOrderType) {
+      payload.serviceType =
+        normalizedOrderType === "PICKUP" ? "PICKUP" : "DELIVERY";
+      payload.orderType = normalizedOrderType;
+    } else {
+      payload.serviceType = "TAKEAWAY"; // Legacy support
+    }
+
+    // Include customer information (required for PICKUP/DELIVERY)
+    if (customerName) payload.customerName = customerName;
+    if (customerMobile) payload.customerMobile = customerMobile;
+    if (customerEmail) payload.customerEmail = customerEmail;
+
+    // Include customer location for PICKUP/DELIVERY
+    if (customerLocation) {
+      payload.customerLocation = {
+        latitude: customerLocation.latitude,
+        longitude: customerLocation.longitude,
+        address: customerLocation.address || customerLocation.fullAddress || "",
+      };
+    }
+
+    // Include sessionToken to isolate each customer session
+    if (sessionToken) payload.sessionToken = sessionToken;
+
+    // Include cartId (required for PICKUP/DELIVERY)
+    if (cartId) payload.cartId = cartId;
+
+    if (sourceQrType === "OFFICE") {
+      payload.sourceQrType = "OFFICE";
+      if (officeName && String(officeName).trim()) {
+        payload.officeName = String(officeName).trim();
+      }
+      const normalizedOfficePaymentMode = String(officePaymentMode || "")
+        .trim()
+        .toUpperCase();
+      payload.officePaymentMode =
+        normalizedOfficePaymentMode === "COD"
+          ? "COD"
+          : normalizedOfficePaymentMode === "BOTH"
+            ? "BOTH"
+            : "ONLINE";
+    }
+    const officeChargeValue = Number(officeDeliveryCharge);
+    if (Number.isFinite(officeChargeValue) && officeChargeValue > 0) {
+      payload.officeDeliveryCharge = Number(officeChargeValue.toFixed(2));
+    }
+  } else {
+    payload.tableNumber = String(tableNumber || "TAKEAWAY");
+  }
+
+  return payload;
+}
